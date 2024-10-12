@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Speech Recognition Application</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: #ffffff;
+            padding: 30px 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333333;
+            margin-bottom: 30px;
+        }
+
+        #textField {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            font-size: 16px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            resize: vertical;
+            color: #333333;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #startBtn,
+        #stopBtn {
+            padding: 12px 24px;
+            font-size: 16px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        #startBtn {
+            background-color: #409eff;
+            color: #ffffff;
+        }
+
+        #stopBtn {
+            background-color: #f56c6c;
+            color: #ffffff;
+        }
+
+        #startBtn:disabled,
+        #stopBtn:disabled {
+            background-color: #c0c4cc;
+            cursor: not-allowed;
+        }
+
+        /* Add hover effects */
+        #startBtn:hover:not(:disabled) {
+            background-color: #66b1ff;
+        }
+
+        #stopBtn:hover:not(:disabled) {
+            background-color: #f78989;
+        }
+
+        /* Listening Indicator */
+        #listeningIndicator {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 18px;
+            color: #67c23a;
+            visibility: hidden;
+        }
+
+        /* Animation for the listening status */
+        .listening-animation {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            #startBtn,
+            #stopBtn {
+                width: 100%;
+                margin: 10px 0;
+            }
+
+            .buttons {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Speech Recognition Application</h1>
+        <textarea id="textField" placeholder="Transcribed text will appear here..."></textarea>
+        <div class="buttons">
+            <button id="startBtn">Start Recording</button>
+            <button id="stopBtn">Stop Recording</button>
+        </div>
+        <div id="listeningIndicator">Listening...</div>
+    </div>
+
+    <script>
+        // Check for browser support
+        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if ('SpeechRecognition' in window) {
+            // Speech Recognition supported
+            const recognition = new SpeechRecognition();
+            const textField = document.getElementById('textField');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const listeningIndicator = document.getElementById('listeningIndicator');
+
+            recognition.continuous = true; // Keep recognizing even if the user pauses
+            recognition.interimResults = false; // Do not return interim results
+
+            let isNewSession = false; // Flag to check if it's a new recording session
+
+            // Function to process transcript
+            function processTranscript(transcript) {
+                transcript = transcript.trim();
+
+                // Capitalize the first letter
+                if (transcript.length > 0) {
+                    transcript = transcript.charAt(0).toUpperCase() + transcript.slice(1);
+                }
+
+                // Add a period at the end if it doesn't already end with punctuation
+                if (transcript.length > 0 && !/[.!?]$/.test(transcript)) {
+                    transcript += '.';
+                }
+
+                return transcript;
+            }
+
+            recognition.onstart = () => {
+                // Show the listening indicator
+                listeningIndicator.style.visibility = 'visible';
+                listeningIndicator.classList.add('listening-animation');
+
+                // Change the start button appearance
+                startBtn.classList.add('listening-animation');
+            };
+
+            recognition.onend = () => {
+                // Hide the listening indicator
+                listeningIndicator.style.visibility = 'hidden';
+                listeningIndicator.classList.remove('listening-animation');
+
+                // Reset the start button appearance
+                startBtn.classList.remove('listening-animation');
+            };
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+
+                // Process the transcript
+                transcript = processTranscript(transcript);
+
+                if (isNewSession) {
+                    if (textField.value !== '') {
+                        textField.value += '\n'; // Add a new line only if there is existing text
+                    }
+                    isNewSession = false; // Reset the flag
+                }
+                textField.value += transcript + ' ';
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error detected: ' + event.error);
+            };
+
+            // Function to start recording
+            function startRecording() {
+                if (startBtn.disabled) return; // Do nothing if already recording
+                isNewSession = true; // Set the flag when starting a new session
+                recognition.start();
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            }
+
+            // Function to stop recording
+            function stopRecording() {
+                if (stopBtn.disabled) return; // Do nothing if not recording
+                recognition.stop();
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+
+            startBtn.addEventListener('click', () => {
+                startRecording();
+            });
+
+            stopBtn.addEventListener('click', () => {
+                stopRecording();
+            });
+
+            // Add event listener for keydown to handle Space key
+            document.addEventListener('keydown', (event) => {
+                // Check if the Space key is pressed and no modifier keys are active
+                if (event.code === 'Space' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                    event.preventDefault(); // Prevent default scrolling behavior when pressing Space
+
+                    if (startBtn.disabled) {
+                        // If recording is active, stop it
+                        stopRecording();
+                    } else {
+                        // If not recording, start it
+                        startRecording();
+                    }
+                }
+            });
+
+            // Initially disable the Stop button
+            stopBtn.disabled = true;
+        } else {
+            // Speech Recognition not supported
+            alert('Your browser does not support Speech Recognition. Please use Chrome or Edge.');
+        }
+    </script>
+
+</body>
+
+</html>
